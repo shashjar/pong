@@ -1,4 +1,5 @@
 #include "raylib.h"
+#include <math.h>
 
 // Game constants
 #define SCREEN_WIDTH 800
@@ -91,8 +92,8 @@ void InitGame(Paddle *leftPaddle, Paddle *rightPaddle, Ball *ball) {
         .y = SCREEN_HEIGHT/2
     };
     ball->speed = (Vector2){
-        .x = BALL_SPEED,
-        .y = BALL_SPEED
+        .x = BALL_SPEED/sqrtf(2.0f),
+        .y = BALL_SPEED/sqrtf(2.0f)
     };
     ball->radius = BALL_RADIUS;
     ball->color = WHITE;
@@ -129,15 +130,55 @@ void UpdateGame(Paddle *leftPaddle, Paddle *rightPaddle, Ball *ball, float delta
         ball->speed.x *= -1;
     }
 
-    // TODO: Collision detection - ball with paddles
+    // Collision detection - ball with paddles
     if (CheckCollisionCircleRec(ball->position, ball->radius, leftPaddle->rect)) {
-
+        float relY = (leftPaddle->rect.y + (leftPaddle->rect.height/2)) - ball->position.y;
+        float normY = relY / (leftPaddle->rect.height/2);
+        
+        float bounceAngle = normY * 45.0f;        
+        float bounceAngleRad = bounceAngle * DEG2RAD;
+        
+        ball->speed.x = BALL_SPEED * cosf(bounceAngleRad);
+        ball->speed.y = -BALL_SPEED * sinf(bounceAngleRad);
+        
+        ball->position.x = leftPaddle->rect.x + leftPaddle->rect.width + ball->radius;
     }
     if (CheckCollisionCircleRec(ball->position, ball->radius, rightPaddle->rect)) {
-
+        float relY = (rightPaddle->rect.y + (rightPaddle->rect.height/2)) - ball->position.y;
+        float normY = relY / (rightPaddle->rect.height/2);
+        
+        float bounceAngle = normY * 45.0f;        
+        float bounceAngleRad = bounceAngle * DEG2RAD;
+        
+        ball->speed.x = -BALL_SPEED * cosf(bounceAngleRad);
+        ball->speed.y = -BALL_SPEED * sinf(bounceAngleRad);
+        
+        ball->position.x = rightPaddle->rect.x - ball->radius;
     }
 
-    // TODO: Collision detection - ball with left/right of screen (scoring)
+    // Collision detection - ball with left/right of screen (scoring)
+    if (ball->position.x - ball->radius <= 0) {
+        rightPaddle->score++;
+        ball->position = (Vector2){
+            .x = SCREEN_WIDTH/2,
+            .y = SCREEN_HEIGHT/2
+        };
+        ball->speed = (Vector2){
+            .x = -BALL_SPEED,
+            .y = 0
+        };
+    }
+    if (ball->position.x + ball->radius >= SCREEN_WIDTH) {
+        leftPaddle->score++;
+        ball->position = (Vector2){
+            .x = SCREEN_WIDTH/2,
+            .y = SCREEN_HEIGHT/2
+        };
+        ball->speed = (Vector2){
+            .x = BALL_SPEED,
+            .y = 0
+        };
+    }
 }
 
 void DrawGame(Paddle *leftPaddle, Paddle *rightPaddle, Ball *ball) {
